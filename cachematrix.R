@@ -1,7 +1,8 @@
-# makeCacheMatrix creates a special matrix object that can compute its inverse.
-# The inverse is computed and returned each time it is requested.
+# It allows for caching the inverse if the matrix has not changed since the last computation.
 
 makeCacheMatrix <- function(x = matrix(0, nrow = 3, ncol = 3)) {
+  invertedMatrix <- NULL              # Initialize the variable to store the inverse of the matrix
+  usedToSolveInverted <- NULL         # Initialize the variable to store the matrix used to calc toe inverse
   
   # Function to fill the matrix with random values (1 to 10) and reshape it into a 3x3 matrix
   fillSample <- function() {
@@ -10,37 +11,71 @@ makeCacheMatrix <- function(x = matrix(0, nrow = 3, ncol = 3)) {
     
     # Create a new matrix with the sampled values (3x3 matrix)
     x <<- matrix(sampleVector, nrow = 3, ncol = 3)
+    usedToSolveInverted <<- NULL
   }
   
   # Function to compute and return the inverse of the matrix
+  calcInverted <- function() {
+    # Calculate the inverse of the matrix using solve() and return it
+    invertedMatrix <<- solve(x)
+    usedToSolveInverted <<- x
+    return(invertedMatrix)
+  }
+  
+  # Function to get the cached inverted matrix
   getInverted <- function() {
-    # Compute and return the inverse of the matrix
-    return(solve(x))
+    # Return the cached inverted matrix
+    return(invertedMatrix)
+  }
+  
+  # Function to check if the matrix has not changed since it was created
+  hasNotChanged <- function() {
+    # Check if the current matrix is identical to the original matrix
+    return(identical(x, usedToSolveInverted))
+  }
+  
+  # Function to check if the inverse has already been computed
+  hasInverted <- function() {
+    # Return TRUE if the inverse has been computed (not NULL)
+    return(!is.null(invertedMatrix))
   }
   
   # Return a list of functions to interact with the matrix object
   return(
     list(
-      original = function() x,          # Return the original matrix
-      fillSample = fillSample,          # Function to fill the matrix with random values
-      getInverted = getInverted        # Function to get the inverse of the matrix
+      getOriginal = function() x,          # Function to get the original matrix
+      fillSample = fillSample,             # Function to fill the matrix with random values
+      getInverted = getInverted,           # Function to get the cached inverse of the matrix
+      calcInverted = calcInverted,         # Function to calculate and cache the inverse
+      hasNotChanged = hasNotChanged,       # Function to check if the matrix has not changed
+      hasInverted = hasInverted           # Function to check if the inverse has been computed
     )
   )
 }
 
 # Example usage:
-cm <- makeCacheMatrix()   # Create a cached matrix object
-cm$fillSample()           # Fill the matrix with random values
-print(cm$original())      # Print the original matrix
-print(cm$getInverted())   # Get and print the inverse of the matrix
+cm <- makeCacheMatrix()      # Create the matrix object
 
-cm<-makeCacheMatrix()
-cm$fillSample()
-cm$original()
-cm$solve()
+cm$fillSample()              # Fill the matrix with random values
+print(cm$getOriginal())      # Print the original matrix
 
-## Write a short comment describing this function
-
+# Call cacheSolve to either get the cached inverse or calculate it
 cacheSolve <- function(x, ...) {
-        ## Return a matrix that is the inverse of 'x'
+  ## Return a matrix that is the inverse of 'x'
+  if(x$hasNotChanged() && x$hasInverted()) {
+    print("Getting cached matrix")      # Print message to indicate the cached inverse is being used
+    return(x$getInverted())            # Return the cached inverse
+  }
+  
+  # If the inverse is not cached, compute and store the inverse
+  print("Caching inverted matrix")      # Print message to indicate the matrix inverse is being cached
+  return(x$calcInverted())              # Compute and return the inverse
 }
+
+# Usage of cacheSolve function
+print(cacheSolve(cm))              # Get the inverse, will be computed and cached
+print(cacheSolve(cm))              # Get the inverse again, will retrieve cached version
+
+# Modify the matrix and call cacheSolve again
+cm$fillSample()                   # Change the matrix by calling fillSample
+print(cacheSolve(cm))              # Inverse will be recalculated and cached for the new matrix
